@@ -1,5 +1,3 @@
-import { collection, getDocs, doc, setDoc, writeBatch } from 'firebase/firestore';
-import { db } from '../firebase';
 import { Product, Offer, SalesStats } from '../types';
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -107,45 +105,6 @@ export const INITIAL_STATS: SalesStats = {
 };
 
 export async function seedDatabaseIfNeeded() {
-  try {
-    // 1. Seed Products
-    const productsSnap = await getDocs(collection(db, 'products'));
-    if (productsSnap.empty) {
-      console.log("Seeding initial products into Firestore...");
-      const batch = writeBatch(db);
-      INITIAL_PRODUCTS.forEach((product) => {
-        const docRef = doc(collection(db, 'products'));
-        batch.set(docRef, product);
-      });
-      await batch.commit();
-      console.log("Seeded products successfully.");
-    }
-
-    // 2. Seed Offers
-    const offersSnap = await getDocs(collection(db, 'offers'));
-    if (offersSnap.empty) {
-      console.log("Seeding initial active offers into Firestore...");
-      const batch = writeBatch(db);
-      INITIAL_OFFERS.forEach((offer) => {
-        const docRef = doc(collection(db, 'offers'));
-        batch.set(docRef, offer);
-      });
-      await batch.commit();
-      console.log("Seeded offers successfully.");
-    }
-
-    // 3. Seed Stats
-    const statsSnap = await getDocs(collection(db, 'stats'));
-    if (statsSnap.empty) {
-      console.log("Seeding initial sales statistics into Firestore...");
-      // Use 'global' as the document ID so we always have a single predictable record
-      await setDoc(doc(db, 'stats', 'global'), {
-        ...INITIAL_STATS,
-        updatedAt: new Date().toISOString()
-      });
-      console.log("Seeded global statistics successfully.");
-    }
-  } catch (err) {
-    console.warn("Failed to seed database (likely permissions or offline during setup):", err);
-  }
+  // Database seeding is now handled locally in AppContext via LocalStorage
+  return Promise.resolve();
 }

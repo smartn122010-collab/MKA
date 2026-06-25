@@ -12,8 +12,6 @@ import {
   ShieldAlert
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
 
 const PRESET_AVATARS = [
   {
@@ -43,7 +41,7 @@ const PRESET_AVATARS = [
 ];
 
 export const Profile: React.FC = () => {
-  const { profile, logOut, user } = useApp();
+  const { profile, logOut, user, updateProfilePhoto } = useApp();
   const [selectedAvatar, setSelectedAvatar] = useState(profile?.photoURL || '');
   const [customUrl, setCustomUrl] = useState('');
   const [showSelector, setShowSelector] = useState(false);
@@ -55,14 +53,13 @@ export const Profile: React.FC = () => {
   const handleUpdateAvatar = async (avatarUrl: string) => {
     try {
       setError(null);
-      const userRef = doc(db, 'users', profile.uid);
-      await updateDoc(userRef, { photoURL: avatarUrl });
+      await updateProfilePhoto(avatarUrl);
       setSelectedAvatar(avatarUrl);
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 2000);
     } catch (err) {
       console.error("Failed to update profile picture:", err);
-      setError("Could not save profile picture. Check your connection.");
+      setError("Could not save profile picture.");
     }
   };
 

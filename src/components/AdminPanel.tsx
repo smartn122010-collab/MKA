@@ -28,8 +28,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Product, Offer, SalesStats } from '../types';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
 
 export const AdminPanel: React.FC = () => {
   const { 
@@ -70,18 +68,8 @@ export const AdminPanel: React.FC = () => {
       setPinLoading(true);
       setPinError(null);
       try {
-        if (isDemoMode) {
-          const localPin = localStorage.getItem('mka_admin_pin');
-          setDbPin(localPin || null);
-        } else {
-          const docRef = doc(db, 'settings', 'admin_pin');
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setDbPin(docSnap.data().pin || null);
-          } else {
-            setDbPin(null);
-          }
-        }
+        const localPin = localStorage.getItem('mka_admin_pin');
+        setDbPin(localPin || null);
       } catch (err) {
         console.error("Error reading admin security PIN:", err);
       } finally {
@@ -89,7 +77,7 @@ export const AdminPanel: React.FC = () => {
       }
     };
     fetchAdminPin();
-  }, [isDemoMode]);
+  }, []);
 
   // Product addition state
   const [newProduct, setNewProduct] = useState<Omit<Product, 'id'>>({
@@ -138,21 +126,15 @@ export const AdminPanel: React.FC = () => {
       return;
     }
     try {
-      if (isDemoMode) {
-        localStorage.setItem('mka_admin_pin', setupPin);
-        setDbPin(setupPin);
-      } else {
-        const docRef = doc(db, 'settings', 'admin_pin');
-        await setDoc(docRef, { pin: setupPin, updatedAt: new Date().toISOString() });
-        setDbPin(setupPin);
-      }
+      localStorage.setItem('mka_admin_pin', setupPin);
+      setDbPin(setupPin);
       setIsUnlocked(true);
       showFeedback("Admin security PIN established successfully!");
       setSetupPin('');
       setConfirmSetupPin('');
     } catch (err) {
       console.error("Error setting PIN:", err);
-      setPinError("Could not save PIN to the database. Verify permission rules.");
+      setPinError("Could not save PIN to local storage.");
     }
   };
 
@@ -180,20 +162,14 @@ export const AdminPanel: React.FC = () => {
       return;
     }
     try {
-      if (isDemoMode) {
-        localStorage.setItem('mka_admin_pin', newPinVal);
-        setDbPin(newPinVal);
-      } else {
-        const docRef = doc(db, 'settings', 'admin_pin');
-        await setDoc(docRef, { pin: newPinVal, updatedAt: new Date().toISOString() });
-        setDbPin(newPinVal);
-      }
+      localStorage.setItem('mka_admin_pin', newPinVal);
+      setDbPin(newPinVal);
       showFeedback("Admin PIN changed successfully!");
       setNewPinVal('');
       setConfirmNewPinVal('');
     } catch (err) {
       console.error("Error updating PIN:", err);
-      showFeedback("Failed to update PIN in the database.", "error");
+      showFeedback("Failed to update PIN.", "error");
     }
   };
 
@@ -205,20 +181,14 @@ export const AdminPanel: React.FC = () => {
       return;
     }
     try {
-      if (isDemoMode) {
-        localStorage.removeItem('mka_admin_pin');
-        setDbPin(null);
-      } else {
-        const docRef = doc(db, 'settings', 'admin_pin');
-        await setDoc(docRef, { pin: null, updatedAt: new Date().toISOString() });
-        setDbPin(null);
-      }
+      localStorage.removeItem('mka_admin_pin');
+      setDbPin(null);
       setIsUnlocked(false);
       showFeedback("Security PIN cleared successfully. Reset to setup mode.");
       setConfirmingResetPin(false);
     } catch (err) {
       console.error("Error resetting PIN:", err);
-      showFeedback("Failed to reset PIN. Check database connectivity.", "error");
+      showFeedback("Failed to reset PIN.", "error");
     }
   };
 
