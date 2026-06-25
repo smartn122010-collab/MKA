@@ -115,7 +115,15 @@ export const Sidebar: React.FC = () => {
               </nav>
             </div>
 
-            {/* Mobile bottom section - logout removed to open directly to home */}
+            <div className="pt-6 border-t border-neutral-900">
+              <button
+                onClick={() => { logOut(); setIsOpen(false); }}
+                className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium text-neutral-400 hover:text-red-500 hover:bg-red-950/10 transition-all"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>Logout</span>
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -157,7 +165,7 @@ export const Sidebar: React.FC = () => {
           </nav>
         </div>
 
-        {/* Footer Sidebar with Profile info */}
+        {/* Footer Sidebar with Profile and Logout */}
         <div className="pt-6 border-t border-neutral-900 space-y-4">
           <div className="flex items-center gap-3 px-2">
             <img 
@@ -171,6 +179,14 @@ export const Sidebar: React.FC = () => {
               <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-wider block capitalize">{profile?.role || 'Customer'}</span>
             </div>
           </div>
+
+          <button
+            onClick={logOut}
+            className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-sm font-medium text-neutral-400 hover:text-red-500 hover:bg-red-950/10 transition-all duration-200"
+          >
+            <LogOut className="w-5 h-5 text-neutral-500 hover:text-red-500" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </aside>
     </>

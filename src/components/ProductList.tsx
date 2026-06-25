@@ -20,7 +20,7 @@ export const ProductList: React.FC = () => {
     products, 
     selectedProduct, 
     setSelectedProduct, 
-    setActiveTab 
+    setActiveTab
   } = useApp();
 
   const [activeCategory, setActiveCategory] = useState<string>('All');
@@ -52,27 +52,51 @@ export const ProductList: React.FC = () => {
           </p>
         </div>
 
-        {/* Category Tabs */}
-        <div className="flex flex-wrap gap-1.5 bg-neutral-950 p-1.5 border border-neutral-900 rounded-2xl overflow-x-auto">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                activeCategory === cat
-                  ? 'bg-red-600 text-white shadow-lg'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+        {products.length > 0 && (
+          /* Category Tabs */
+          <div className="flex flex-wrap gap-1.5 bg-neutral-950 p-1.5 border border-neutral-900 rounded-2xl overflow-x-auto">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  activeCategory === cat
+                    ? 'bg-red-600 text-white shadow-lg'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Main Catalog Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredProducts.map((product) => (
+      {products.length === 0 ? (
+        <div className="glass-panel rounded-3xl p-12 text-center border border-red-500/20 max-w-xl mx-auto my-12 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-amber-500 to-red-600 animate-pulse" />
+          <MessageSquare className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
+          <h3 className="font-display text-xl font-black text-white uppercase tracking-tight">
+            No Products in Catalog
+          </h3>
+          <p className="text-xs text-neutral-400 mt-2 max-w-sm mx-auto leading-relaxed">
+            There are currently zero spare parts in the catalog. All products must be manually added by an administrator.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setActiveTab('admin')}
+              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg hover:shadow-red-600/10"
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Go to Admin Panel to Add Products</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Main Catalog Grid */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredProducts.map((product) => (
           <div
             key={product.id || product.name}
             onClick={() => setSelectedProduct(product)}
@@ -129,6 +153,7 @@ export const ProductList: React.FC = () => {
           </div>
         ))}
       </div>
+      )}
 
       {/* Split Drawer Slide-In Panel for Product Detail */}
       <AnimatePresence>

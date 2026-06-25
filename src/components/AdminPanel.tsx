@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Product, Offer, SalesStats } from '../types';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export const AdminPanel: React.FC = () => {
   const { 
@@ -37,6 +39,8 @@ export const AdminPanel: React.FC = () => {
     addNewProduct, 
     removeProduct, 
     updateExistingProduct,
+    clearAllProducts,
+    seedDefaultProducts,
     addNewOffer, 
     removeOffer, 
     updateSalesMetrics,
@@ -68,8 +72,18 @@ export const AdminPanel: React.FC = () => {
       setPinLoading(true);
       setPinError(null);
       try {
-        const localPin = localStorage.getItem('mka_admin_pin');
-        setDbPin(localPin || null);
+        if (isDemoMode) {
+          const localPin = localStorage.getItem('mka_admin_pin');
+          setDbPin(localPin || null);
+        } else {
+          const docRef = doc(db, 'settings', 'admin_pin');
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setDbPin(docSnap.data().pin || null);
+          } else {
+            setDbPin(null);
+          }
+        }
       } catch (err) {
         console.error("Error reading admin security PIN:", err);
       } finally {
@@ -77,7 +91,7 @@ export const AdminPanel: React.FC = () => {
       }
     };
     fetchAdminPin();
-  }, []);
+  }, [isDemoMode]);
 
   // Product addition state
   const [newProduct, setNewProduct] = useState<Omit<Product, 'id'>>({
@@ -105,12 +119,11 @@ export const AdminPanel: React.FC = () => {
   const [editingStat, setEditingStat] = useState<{ key: keyof SalesStats; label: string; value: number } | null>(null);
   const [statEditValue, setStatEditValue] = useState<string>('');
 
-  const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [confirmingResetPin, setConfirmingResetPin] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
-  const showFeedback = (msg: string, type: 'success' | 'error' = 'success') => {
-    setFeedback({ message: msg, type });
-    setTimeout(() => setFeedback(null), 3500);
+  const showFeedback = (msg: string) => {
+    setFeedback(msg);
+    setTimeout(() => setFeedback(null), 3000);
   };
 
   // Security PIN core handlers
@@ -126,15 +139,21 @@ export const AdminPanel: React.FC = () => {
       return;
     }
     try {
-      localStorage.setItem('mka_admin_pin', setupPin);
-      setDbPin(setupPin);
+      if (isDemoMode) {
+        localStorage.setItem('mka_admin_pin', setupPin);
+        setDbPin(setupPin);
+      } else {
+        const docRef = doc(db, 'settings', 'admin_pin');
+        await setDoc(docRef, { pin: setupPin, updatedAt: new Date().toISOString() });
+        setDbPin(setupPin);
+      }
       setIsUnlocked(true);
       showFeedback("Admin security PIN established successfully!");
       setSetupPin('');
       setConfirmSetupPin('');
     } catch (err) {
       console.error("Error setting PIN:", err);
-      setPinError("Could not save PIN to local storage.");
+      setPinError("Could not save PIN to the database. Verify permission rules.");
     }
   };
 
@@ -154,41 +173,49 @@ export const AdminPanel: React.FC = () => {
   const handleUpdatePin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPinVal.length < 4) {
-      showFeedback("New PIN must be at least 4 characters.", "error");
+      alert("New PIN must be at least 4 characters.");
       return;
     }
     if (newPinVal !== confirmNewPinVal) {
-      showFeedback("The confirm PIN does not match the new PIN.", "error");
+      alert("The confirm PIN does not match the new PIN.");
       return;
     }
     try {
-      localStorage.setItem('mka_admin_pin', newPinVal);
-      setDbPin(newPinVal);
+      if (isDemoMode) {
+        localStorage.setItem('mka_admin_pin', newPinVal);
+        setDbPin(newPinVal);
+      } else {
+        const docRef = doc(db, 'settings', 'admin_pin');
+        await setDoc(docRef, { pin: newPinVal, updatedAt: new Date().toISOString() });
+        setDbPin(newPinVal);
+      }
       showFeedback("Admin PIN changed successfully!");
       setNewPinVal('');
       setConfirmNewPinVal('');
     } catch (err) {
       console.error("Error updating PIN:", err);
-      showFeedback("Failed to update PIN.", "error");
+      alert("Failed to update PIN in the database.");
     }
   };
 
   const handleResetPin = async () => {
-    if (!confirmingResetPin) {
-      setConfirmingResetPin(true);
-      showFeedback("Click Reset PIN again to confirm. This will wipe the PIN and lock the panel.", "error");
-      setTimeout(() => setConfirmingResetPin(false), 5000);
+    if (!confirm("Are you sure you want to RESET the admin security PIN? This will wipe the current PIN, locking the admin panel and returning it to a first-time set up state.")) {
       return;
     }
     try {
-      localStorage.removeItem('mka_admin_pin');
-      setDbPin(null);
+      if (isDemoMode) {
+        localStorage.removeItem('mka_admin_pin');
+        setDbPin(null);
+      } else {
+        const docRef = doc(db, 'settings', 'admin_pin');
+        await setDoc(docRef, { pin: null, updatedAt: new Date().toISOString() });
+        setDbPin(null);
+      }
       setIsUnlocked(false);
       showFeedback("Security PIN cleared successfully. Reset to setup mode.");
-      setConfirmingResetPin(false);
     } catch (err) {
       console.error("Error resetting PIN:", err);
-      showFeedback("Failed to reset PIN.", "error");
+      alert("Failed to reset PIN. Check database connectivity.");
     }
   };
 
@@ -196,7 +223,7 @@ export const AdminPanel: React.FC = () => {
   const handleAddProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProduct.name || !newProduct.image || newProduct.price <= 0 || !newProduct.description) {
-      showFeedback("Please fill out all product details correctly.", "error");
+      alert("Please fill out all product details correctly.");
       return;
     }
     
@@ -232,7 +259,7 @@ export const AdminPanel: React.FC = () => {
   const handleAddOfferSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newOffer.code || !newOffer.description || !newOffer.discount || !newOffer.expiry) {
-      showFeedback("Please fill out all offer details correctly.", "error");
+      alert("Please fill out all offer details correctly.");
       return;
     }
     await addNewOffer(newOffer);
@@ -250,7 +277,7 @@ export const AdminPanel: React.FC = () => {
     if (!editingStat) return;
     const numValue = Number(statEditValue);
     if (isNaN(numValue) || numValue < 0) {
-      showFeedback("Please enter a valid positive number.", "error");
+      alert("Please enter a valid positive number.");
       return;
     }
 
@@ -549,18 +576,10 @@ export const AdminPanel: React.FC = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className={`p-4 border rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-lg ${
-              feedback.type === 'error'
-                ? 'bg-red-500/10 border-red-500/25 text-red-400'
-                : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
-            }`}
+            className="p-4 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl text-emerald-400 text-xs font-semibold flex items-center gap-2.5 shadow-lg"
           >
-            {feedback.type === 'error' ? (
-              <ShieldAlert className="w-4 h-4 text-red-400" />
-            ) : (
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-            )}
-            <span>{feedback.message}</span>
+            <CheckCircle className="w-4 h-4" />
+            <span>{feedback}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -898,101 +917,132 @@ export const AdminPanel: React.FC = () => {
 
           {/* Existing Products List Column */}
           <div className="glass-panel rounded-3xl p-6 border border-neutral-900 lg:col-span-2 h-[550px] overflow-y-auto space-y-4">
-            <h3 className="font-display text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-4 h-4 text-red-500" />
-              <span>Catalog List ({products.length})</span>
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-neutral-900 pb-3">
+              <h3 className="font-display text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Layers className="w-4 h-4 text-red-500" />
+                <span>Catalog List ({products.length})</span>
+              </h3>
+              {products.length > 0 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirm("Are you sure you want to WIPE and clear all products from the Catalog? This will delete all products permanently, allowing you to manually build your catalog with zero auto-added products.")) {
+                      await clearAllProducts();
+                      showFeedback("All products cleared. You now have a clean slate catalog!");
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-red-600/15 hover:bg-red-600 border border-red-500/20 hover:border-red-600 text-[10px] text-red-400 hover:text-white font-mono font-bold rounded-xl transition-all flex items-center gap-1.5 uppercase"
+                  title="Clear all products to start completely manual"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Wipe All (Start Fresh)</span>
+                </button>
+              )}
+            </div>
 
             <div className="space-y-3">
               {products.length === 0 ? (
-                <div className="flex flex-col items-center justify-center text-center p-12 bg-neutral-900/10 border border-neutral-900 rounded-3xl space-y-3">
-                  <Layers className="w-8 h-8 text-neutral-700 animate-pulse" />
+                <div className="py-16 text-center bg-neutral-950/40 border border-neutral-900 rounded-2xl p-6 flex flex-col items-center justify-center space-y-4">
+                  <Database className="w-8 h-8 text-neutral-700" />
                   <div>
-                    <h4 className="text-xs font-bold text-neutral-300 uppercase tracking-widest">No Products in Catalog</h4>
-                    <p className="text-[10px] text-neutral-500 mt-1 max-w-xs leading-relaxed">
-                      All parts have been deleted. Use the form on the left to manually add new premium spare parts.
+                    <p className="text-xs font-bold text-neutral-300 uppercase tracking-wider">Catalog is Empty</p>
+                    <p className="text-xs text-neutral-500 mt-1 max-w-sm leading-relaxed">
+                      There are no auto-added products. You can build your catalog fully manually or seed the default database (including premium Zero Motorcycles electric spares) with one click below.
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await seedDefaultProducts();
+                        showFeedback("Default catalog & Zero electric spares manually added!");
+                      } catch (err) {
+                        alert("Seeding failed. Please verify configurations.");
+                      }
+                    }}
+                    className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-mono text-xs font-bold rounded-xl transition-all shadow-md uppercase flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Seed Default Parts Catalog</span>
+                  </button>
                 </div>
               ) : (
                 products.map((product) => (
-                  <div 
-                    key={product.id || product.name}
-                    className="flex items-center justify-between p-3 bg-neutral-900/50 border border-neutral-900 hover:border-red-500/10 rounded-xl transition-all gap-4"
-                  >
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <img 
-                        src={product.image} 
-                        alt={product.name} 
-                        className="w-12 h-12 rounded-lg object-cover bg-neutral-950 border border-neutral-800 shrink-0"
-                      />
-                      <div className="overflow-hidden">
-                        <h4 className="text-xs font-bold text-neutral-200 truncate">{product.name}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest">{product.category}</span>
-                          <span className="text-[9px] text-red-500 font-bold font-mono">₹{product.price}</span>
-                        </div>
+                <div 
+                  key={product.id || product.name}
+                  className="flex items-center justify-between p-3 bg-neutral-900/50 border border-neutral-900 hover:border-red-500/10 rounded-xl transition-all gap-4"
+                >
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <img 
+                      src={product.image} 
+                      alt={product.name} 
+                      className="w-12 h-12 rounded-lg object-cover bg-neutral-950 border border-neutral-800 shrink-0"
+                    />
+                    <div className="overflow-hidden">
+                      <h4 className="text-xs font-bold text-neutral-200 truncate">{product.name}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest">{product.category}</span>
+                        <span className="text-[9px] text-red-500 font-bold font-mono">₹{product.price}</span>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      {/* Stock toggle */}
-                      <button
-                        onClick={() => {
-                          if (product.id) {
-                            updateExistingProduct(product.id, { stock: !product.stock });
-                            showFeedback(`Stock availability updated for ${product.name}`);
-                          }
-                        }}
-                        className="text-xs text-neutral-400 hover:text-white"
-                      >
-                        {product.stock ? (
-                          <span className="text-[9px] font-mono bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full uppercase">In Stock</span>
-                        ) : (
-                          <span className="text-[9px] font-mono bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full uppercase">Out</span>
-                        )}
-                      </button>
-
-                      {/* Edit */}
-                      <button
-                        onClick={() => {
-                          setEditingProduct(product);
-                          setNewProduct({
-                            name: product.name,
-                            image: product.image,
-                            price: product.price,
-                            category: product.category,
-                            rating: product.rating,
-                            description: product.description,
-                            stock: product.stock
-                          });
-                          showFeedback(`Loaded "${product.name}" for editing!`);
-                          // Scroll form smoothly into view on smaller devices
-                          document.getElementById('products-form-container')?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                        className="p-2 text-neutral-500 hover:text-amber-500 hover:bg-amber-950/15 rounded-lg transition-all"
-                        title="Edit Product"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-
-                      {/* Delete */}
-                      <button
-                        onClick={() => {
-                          if (product.id) {
-                            removeProduct(product.id);
-                            showFeedback(`"${product.name}" deleted from Catalog successfully.`);
-                          }
-                        }}
-                        className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-950/15 rounded-lg transition-all"
-                        title="Delete Product"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
                   </div>
-                ))
-              )}
+
+                  <div className="flex items-center gap-2">
+                    {/* Stock toggle */}
+                    <button
+                      onClick={() => {
+                        if (product.id) {
+                          updateExistingProduct(product.id, { stock: !product.stock });
+                          showFeedback(`Stock availability updated for ${product.name}`);
+                        }
+                      }}
+                      className="text-xs text-neutral-400 hover:text-white"
+                    >
+                      {product.stock ? (
+                        <span className="text-[9px] font-mono bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full uppercase">In Stock</span>
+                      ) : (
+                        <span className="text-[9px] font-mono bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full uppercase">Out</span>
+                      )}
+                    </button>
+
+                    {/* Edit */}
+                    <button
+                      onClick={() => {
+                        setEditingProduct(product);
+                        setNewProduct({
+                          name: product.name,
+                          image: product.image,
+                          price: product.price,
+                          category: product.category,
+                          rating: product.rating,
+                          description: product.description,
+                          stock: product.stock
+                        });
+                        showFeedback(`Loaded "${product.name}" for editing!`);
+                        // Scroll form smoothly into view on smaller devices
+                        document.getElementById('products-form-container')?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="p-2 text-neutral-500 hover:text-amber-500 hover:bg-amber-950/15 rounded-lg transition-all"
+                      title="Edit Product"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+
+                    {/* Delete */}
+                    <button
+                      onClick={() => {
+                        if (product.id && confirm(`Are you sure you want to delete ${product.name}?`)) {
+                          removeProduct(product.id);
+                          showFeedback("Part deleted from Catalog successfully.");
+                        }
+                      }}
+                      className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-950/15 rounded-lg transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )))}
             </div>
           </div>
 
@@ -1096,13 +1146,12 @@ export const AdminPanel: React.FC = () => {
 
                   <button
                     onClick={() => {
-                      if (offer.id) {
+                      if (offer.id && confirm(`Delete coupon ${offer.code}?`)) {
                         removeOffer(offer.id);
-                        showFeedback(`Promo Code "${offer.code}" deleted successfully.`);
+                        showFeedback("Promo Code deleted successfully.");
                       }
                     }}
                     className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-950/15 rounded-lg transition-all"
-                    title="Delete Promo Code"
                   >
                     <Trash2 className="w-4.5 h-4.5" />
                   </button>
@@ -1211,14 +1260,10 @@ export const AdminPanel: React.FC = () => {
             <button
               type="button"
               onClick={handleResetPin}
-              className={`w-full py-3 border font-bold rounded-xl transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 ${
-                confirmingResetPin 
-                  ? 'border-red-500 bg-red-950/20 text-red-400 animate-pulse' 
-                  : 'border-red-500/20 hover:bg-red-950/10 text-red-500'
-              }`}
+              className="w-full py-3 border border-red-500/20 hover:bg-red-950/10 text-red-500 font-bold rounded-xl transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2"
             >
-              <RefreshCw className={`w-4 h-4 ${confirmingResetPin ? 'animate-spin' : ''}`} />
-              <span>{confirmingResetPin ? 'Click Again to Confirm Reset' : 'Reset PIN Option'}</span>
+              <RefreshCw className="w-4 h-4" />
+              <span>Reset PIN Option</span>
             </button>
           </div>
 

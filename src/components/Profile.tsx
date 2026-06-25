@@ -3,15 +3,17 @@ import { motion } from 'motion/react';
 import { 
   User, 
   Mail, 
+  LogOut, 
   Sparkles, 
   Image as ImageIcon, 
   Check, 
   Camera, 
   CheckCircle,
-  Link2,
-  ShieldAlert
+  Link2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { db } from '../firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 const PRESET_AVATARS = [
   {
@@ -41,25 +43,24 @@ const PRESET_AVATARS = [
 ];
 
 export const Profile: React.FC = () => {
-  const { profile, logOut, user, updateProfilePhoto } = useApp();
+  const { profile, logOut, user } = useApp();
   const [selectedAvatar, setSelectedAvatar] = useState(profile?.photoURL || '');
   const [customUrl, setCustomUrl] = useState('');
   const [showSelector, setShowSelector] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   if (!profile) return null;
 
   const handleUpdateAvatar = async (avatarUrl: string) => {
     try {
-      setError(null);
-      await updateProfilePhoto(avatarUrl);
+      const userRef = doc(db, 'users', profile.uid);
+      await updateDoc(userRef, { photoURL: avatarUrl });
       setSelectedAvatar(avatarUrl);
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 2000);
     } catch (err) {
       console.error("Failed to update profile picture:", err);
-      setError("Could not save profile picture.");
+      alert("Could not save profile picture. Check your connection.");
     }
   };
 
@@ -83,17 +84,6 @@ export const Profile: React.FC = () => {
           Manage your account profile picture, customize your dashboard credentials, and log out securely.
         </p>
       </div>
-
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-4 bg-red-500/10 border border-red-500/25 rounded-2xl text-red-400 text-xs font-semibold flex items-center gap-2.5 shadow-lg"
-        >
-          <ShieldAlert className="w-4 h-4 text-red-400" />
-          <span>{error}</span>
-        </motion.div>
-      )}
 
       {/* Profile Card Info */}
       <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-red-500/10 space-y-8 relative overflow-hidden">
@@ -210,6 +200,17 @@ export const Profile: React.FC = () => {
             </form>
           </motion.div>
         )}
+
+        {/* Profile Action Log Out Button */}
+        <div className="pt-6 border-t border-neutral-900 flex justify-end">
+          <button
+            onClick={logOut}
+            className="flex items-center gap-2 py-3 px-6 bg-red-950/10 hover:bg-red-600 border border-red-500/20 hover:border-red-500 text-xs font-bold text-red-400 hover:text-white rounded-xl transition-all shadow-md"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Securely Sign Out Account</span>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,3 +1,5 @@
+import { collection, getDocs, doc, setDoc, writeBatch } from 'firebase/firestore';
+import { db } from '../firebase';
 import { Product, Offer, SalesStats } from '../types';
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -72,6 +74,33 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.7,
     description: "Anti-slip waterproof seat wrap loaded with double-density foam. Restores saddle comfort for long delivery runs and daily commuting.",
     stock: true
+  },
+  {
+    name: "Zero Carbon Drive Belt (Gates)",
+    image: "https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&q=80&w=400",
+    price: 12500,
+    category: "Transmission",
+    rating: 4.9,
+    description: "Genuine OEM Gates Carbon Drive Belt designed for Zero SR, SR/F, and SR/S electric motorcycles. High-tensile carbon fiber cords deliver instant torque with zero maintenance.",
+    stock: true
+  },
+  {
+    name: "Zero 6kW Quick Charger Module",
+    image: "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&q=80&w=400",
+    price: 45000,
+    category: "Electrical",
+    rating: 4.8,
+    description: "High-speed 6kW EV charger module for Zero S, DS, and SR/F electric models. Reduces charging time by up to 75% for ultimate roadside convenience.",
+    stock: true
+  },
+  {
+    name: "Zero J-Juan Brake Pad Set",
+    image: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&q=80&w=400",
+    price: 3200,
+    category: "Brakes",
+    rating: 4.7,
+    description: "Premium sintered copper-alloy replacement brake pad kit for Zero J-Juan caliper braking systems. Consistent grip and heat dissipation.",
+    stock: true
   }
 ];
 
@@ -105,6 +134,70 @@ export const INITIAL_STATS: SalesStats = {
 };
 
 export async function seedDatabaseIfNeeded() {
-  // Database seeding is now handled locally in AppContext via LocalStorage
-  return Promise.resolve();
+  try {
+    // 1. Seed Products - DISABLED (No auto-added products, manual additions only per user instructions)
+    console.log("Auto-seeding of products is disabled. All products must be added manually.");
+
+    // 2. Seed Offers
+    const offersSnap = await getDocs(collection(db, 'offers'));
+    if (offersSnap.empty) {
+      console.log("Seeding initial active offers into Firestore...");
+      const batch = writeBatch(db);
+      INITIAL_OFFERS.forEach((offer) => {
+        const docRef = doc(collection(db, 'offers'));
+        batch.set(docRef, offer);
+      });
+      await batch.commit();
+      console.log("Seeded offers successfully.");
+    }
+
+    // 3. Seed Stats
+    const statsSnap = await getDocs(collection(db, 'stats'));
+    if (statsSnap.empty) {
+      console.log("Seeding initial sales statistics into Firestore...");
+      // Use 'global' as the document ID so we always have a single predictable record
+      await setDoc(doc(db, 'stats', 'global'), {
+        ...INITIAL_STATS,
+        updatedAt: new Date().toISOString()
+      });
+      console.log("Seeded global statistics successfully.");
+    }
+  } catch (err) {
+    console.warn("Failed to seed database (likely permissions or offline during setup):", err);
+  }
+}
+
+/**
+ * Manually seeds all default products (including Zero Motorcycles electric spares)
+ * into Firestore (or local storage if offline demo mode is active).
+ */
+export async function seedAllProductsManually(isDemoMode: boolean = false) {
+  if (isDemoMode) {
+    localStorage.setItem('mka_local_products', JSON.stringify(INITIAL_PRODUCTS));
+    // Trigger window storage reload event to sync states
+    window.dispatchEvent(new Event('storage'));
+    return;
+  }
+
+  // Firestore seeding
+  const productsSnap = await getDocs(collection(db, 'products'));
+  const existingNames = new Set(productsSnap.docs.map(doc => doc.data().name));
+  
+  const missingProducts = INITIAL_PRODUCTS.filter(p => !existingNames.has(p.name));
+  if (missingProducts.length > 0) {
+    const batch = writeBatch(db);
+    missingProducts.forEach((product) => {
+      const docRef = doc(collection(db, 'products'));
+      batch.set(docRef, product);
+    });
+    await batch.commit();
+  } else {
+    // If somehow all exist, just re-add standard products
+    const batch = writeBatch(db);
+    INITIAL_PRODUCTS.forEach((product) => {
+      const docRef = doc(collection(db, 'products'));
+      batch.set(docRef, product);
+    });
+    await batch.commit();
+  }
 }

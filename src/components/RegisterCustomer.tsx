@@ -9,8 +9,7 @@ import {
   CheckCircle,
   HelpCircle,
   Hash,
-  ShoppingBag,
-  ShieldAlert
+  ShoppingBag
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OrderRegistration } from '../types';
@@ -27,7 +26,6 @@ export const RegisterCustomer: React.FC = () => {
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Pre-populate product details from context
   useEffect(() => {
@@ -41,7 +39,6 @@ export const RegisterCustomer: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setError(null);
     setFormData(prev => ({
       ...prev,
       [name]: name === 'age' ? Number(value) : value
@@ -54,7 +51,7 @@ export const RegisterCustomer: React.FC = () => {
     const { name, contact, address, age, productDetails } = formData;
 
     if (!name || !contact || !address || !productDetails) {
-      setError("Please fill out all required fields before confirming your order.");
+      alert("Please fill out all required fields before confirming your order.");
       return;
     }
 
@@ -134,16 +131,6 @@ Please confirm the order dispatch and wholesale invoice. Thank you!`;
         </motion.div>
       ) : (
         <form onSubmit={handleConfirmedSendOrder} className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6">
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="p-4 bg-red-500/10 border border-red-500/25 rounded-2xl text-red-400 text-xs font-semibold flex items-center gap-2.5 shadow-lg"
-            >
-              <ShieldAlert className="w-4 h-4 text-red-400" />
-              <span>{error}</span>
-            </motion.div>
-          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             
             {/* Customer Name */}

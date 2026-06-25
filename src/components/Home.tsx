@@ -260,56 +260,63 @@ export const Home: React.FC = () => {
 
         {/* Featured Items list */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featuredProducts.map((product) => (
-            <div 
-              key={product.id || product.name}
-              onClick={() => {
-                setSelectedProduct(product);
-                setActiveTab('products');
-              }}
-              className="glass-panel glass-panel-hover rounded-2xl overflow-hidden flex flex-col justify-between group cursor-pointer"
-            >
-              {/* Product Image */}
-              <div className="h-44 overflow-hidden relative bg-neutral-900 border-b border-neutral-900">
-                <img 
-                  src={product.image} 
-                  alt={product.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                
-                {/* Available Badge */}
-                <div className="absolute top-3 right-3 px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[9px] text-emerald-400 font-mono tracking-wider">
-                  IN STOCK
-                </div>
-              </div>
-
-              {/* Product Info */}
-              <div className="p-4 flex-1 flex flex-col justify-between">
-                <div>
-                  <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest block mb-1">
-                    {product.category}
-                  </span>
-                  <h4 className="text-sm font-bold text-neutral-200 line-clamp-1 group-hover:text-red-400 transition-colors">
-                    {product.name}
-                  </h4>
-                  <div className="flex items-center gap-1 mt-1.5">
-                    <Star className="w-3 h-3 text-red-500 fill-red-500" />
-                    <span className="text-xs font-mono text-neutral-300">{product.rating}</span>
+          {featuredProducts.length === 0 ? (
+            <div className="col-span-full py-12 text-center bg-neutral-900/20 border border-neutral-900 rounded-2xl p-8 flex flex-col items-center justify-center space-y-2">
+              <span className="text-xs font-bold text-neutral-400 uppercase tracking-widest">Catalog is Empty</span>
+              <p className="text-xs text-neutral-500 max-w-sm">No featured spare parts have been added to the catalog yet. Sign in as Admin to manually add products.</p>
+            </div>
+          ) : (
+            featuredProducts.map((product) => (
+              <div 
+                key={product.id || product.name}
+                onClick={() => {
+                  setSelectedProduct(product);
+                  setActiveTab('products');
+                }}
+                className="glass-panel glass-panel-hover rounded-2xl overflow-hidden flex flex-col justify-between group cursor-pointer"
+              >
+                {/* Product Image */}
+                <div className="h-44 overflow-hidden relative bg-neutral-900 border-b border-neutral-900">
+                  <img 
+                    src={product.image} 
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  
+                  {/* Available Badge */}
+                  <div className="absolute top-3 right-3 px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[9px] text-emerald-400 font-mono tracking-wider">
+                    IN STOCK
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-neutral-900">
-                  <span className="font-mono text-md font-bold text-red-500">
-                    ₹{product.price.toLocaleString('en-IN')}
-                  </span>
-                  <span className="text-[10px] text-neutral-400 group-hover:text-red-500 transition-colors flex items-center gap-0.5">
-                    <span>View Details</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </span>
+                {/* Product Info */}
+                <div className="p-4 flex-1 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest block mb-1">
+                      {product.category}
+                    </span>
+                    <h4 className="text-sm font-bold text-neutral-200 line-clamp-1 group-hover:text-red-400 transition-colors">
+                      {product.name}
+                    </h4>
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <Star className="w-3 h-3 text-red-500 fill-red-500" />
+                      <span className="text-xs font-mono text-neutral-300">{product.rating}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-neutral-900">
+                    <span className="font-mono text-md font-bold text-red-500">
+                      ₹{product.price.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-[10px] text-neutral-400 group-hover:text-red-500 transition-colors flex items-center gap-0.5">
+                      <span>View Details</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
