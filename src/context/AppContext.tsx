@@ -3,7 +3,10 @@ import {
   onAuthStateChanged, 
   signInWithPopup, 
   signOut, 
-  User as FirebaseUser 
+  User as FirebaseUser,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile
 } from 'firebase/auth';
 import { 
   collection, 
@@ -32,7 +35,7 @@ interface AppContextType {
   products: Product[];
   offers: Offer[];
   stats: SalesStats | null;
-  signIn: () => Promise<void>;
+  signIn: (email?: string, password?: string, isRegistering?: boolean, displayName?: string) => Promise<void>;
   logOut: () => Promise<void>;
   addNewProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   updateExistingProduct: (id: string, product: Partial<Product>) => Promise<void>;
@@ -66,28 +69,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Sign In with Google
-  const signIn = async () => {
+  // Sign In (Email/Password or Legacy Google Fallback)
+  const signIn = async (email?: string, password?: string, isRegistering?: boolean, displayName?: string) => {
     if (authLoading) return;
     setAuthError(null);
     setAuthLoading(true);
 
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      if (result.user) {
+      if (email && password) {
+        let firebaseUser: FirebaseUser;
+        if (isRegistering) {
+          const result = await createUserWithEmailAndPassword(auth, email.trim(), password);
+          firebaseUser = result.user;
+          if (displayName) {
+            await updateProfile(firebaseUser, { displayName: displayName.trim() });
+          }
+        } else {
+          const result = await signInWithEmailAndPassword(auth, email.trim(), password);
+          firebaseUser = result.user;
+        }
+
         // Create or update user profile
-        const userRef = doc(db, 'users', result.user.uid);
+        const userRef = doc(db, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userRef);
         
         // Bootstrapped Admin check
-        const isDefaultAdmin = result.user.email === 'smartnp09812@gmail.com' || result.user.email === 'smartn122010@gmail.com';
+        const isDefaultAdmin = firebaseUser.email === 'smartnp09812@gmail.com' || firebaseUser.email === 'smartn122010@gmail.com';
         const role = isDefaultAdmin ? 'admin' : 'customer';
 
         const userProfileData: UserProfile = {
-          uid: result.user.uid,
-          email: result.user.email || '',
-          displayName: result.user.displayName || 'MKA Customer',
-          photoURL: result.user.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: displayName?.trim() || firebaseUser.displayName || 'MKA Customer',
+          photoURL: firebaseUser.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
           role: role as 'admin' | 'customer'
         };
 
@@ -95,16 +109,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setProfile(userProfileData);
         setIsDemoMode(false);
         localStorage.removeItem('mka_is_demo_mode');
+      } else {
+        const result = await signInWithPopup(auth, googleProvider);
+        if (result.user) {
+          // Create or update user profile
+          const userRef = doc(db, 'users', result.user.uid);
+          const isDefaultAdmin = result.user.email === 'smartnp09812@gmail.com' || result.user.email === 'smartn122010@gmail.com';
+          const role = isDefaultAdmin ? 'admin' : 'customer';
+
+          const userProfileData: UserProfile = {
+            uid: result.user.uid,
+            email: result.user.email || '',
+            displayName: result.user.displayName || 'MKA Customer',
+            photoURL: result.user.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
+            role: role as 'admin' | 'customer'
+          };
+
+          await setDoc(userRef, userProfileData);
+          setProfile(userProfileData);
+          setIsDemoMode(false);
+          localStorage.removeItem('mka_is_demo_mode');
+        }
       }
     } catch (err: any) {
       console.error("Sign-in failure details:", err);
-      let errMsg = "Google Sign-In failed. Please try again.";
-      if (err?.code === "auth/cancelled-popup-request" || err?.message?.includes("cancelled-popup-request")) {
-        errMsg = "Popup Request Cancelled: A browser popup is already opening, or popups are blocked in this iframe. Try opening the app in a new tab first!";
+      let errMsg = err?.message || "Sign-In failed. Please verify credentials.";
+      if (err?.code === "auth/invalid-credential" || err?.code === "auth/wrong-password" || err?.code === "auth/user-not-found") {
+        errMsg = "Invalid email or password. Please verify and try again, or register as a new customer!";
+      } else if (err?.code === "auth/email-already-in-use") {
+        errMsg = "This email is already registered. Please login instead.";
+      } else if (err?.code === "auth/weak-password") {
+        errMsg = "Password is too weak. Please use a password with at least 6 characters.";
+      } else if (err?.code === "auth/invalid-email") {
+        errMsg = "Please provide a valid email address.";
       } else if (err?.code === "auth/popup-blocked" || err?.message?.includes("popup-blocked")) {
-        errMsg = "Popup Blocked: Your browser blocked the authentication window. Please enable popups, or open this application in a new tab.";
-      } else if (err?.code === "auth/popup-closed-by-user") {
-        errMsg = "Login Cancelled: The Google authentication window was closed before signing in.";
+        errMsg = "Popup Blocked: Your browser blocked the Google popup. Please register an account below instead!";
       }
       setAuthError(errMsg);
     } finally {
