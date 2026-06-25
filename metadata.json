@@ -1,0 +1,6 @@
+{
+  "name": "MKA Motor Spare Parts",
+  "description": "An elegant, premium motorcycle spare parts catalog and order management system with a crimson-black luxury glassmorphism design, real-time Firestore synchronization, manual admin controls, and direct WhatsApp order placement.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,163 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Motorcycle spare part item available in the catalog",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the spare part"
+        },
+        "image": {
+          "type": "string",
+          "description": "URL or base64 of the product image"
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the spare part in INR (₹)"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the part, e.g., Engine, Brakes, Transmission"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Product quality rating out of 5 stars"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the spare part and its compatibility"
+        },
+        "stock": {
+          "type": "boolean",
+          "description": "True if available, false if out of stock"
+        }
+      },
+      "required": [
+        "name",
+        "price",
+        "category",
+        "rating",
+        "description",
+        "stock"
+      ]
+    },
+    "Offer": {
+      "title": "Offer",
+      "description": "Discount coupon code visitable at the branch",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "The unique discount coupon code"
+        },
+        "description": {
+          "type": "string",
+          "description": "Explanation of the discount terms"
+        },
+        "discount": {
+          "type": "string",
+          "description": "Discount percentage or amount, e.g. '15% Off'"
+        },
+        "expiry": {
+          "type": "string",
+          "description": "Expiry date of the discount offer"
+        }
+      },
+      "required": [
+        "code",
+        "description",
+        "discount",
+        "expiry"
+      ]
+    },
+    "Stat": {
+      "title": "Stat",
+      "description": "Admin manually inputted sales and stock metrics",
+      "type": "object",
+      "properties": {
+        "totalStock": {
+          "type": "number",
+          "description": "Total stock available"
+        },
+        "totalServices": {
+          "type": "number",
+          "description": "Total services completed"
+        },
+        "todaySales": {
+          "type": "number",
+          "description": "Today's sales in INR (₹)"
+        },
+        "monthSales": {
+          "type": "number",
+          "description": "This month's sales in INR (₹)"
+        },
+        "yearSales": {
+          "type": "number",
+          "description": "This year's sales in INR (₹)"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of the last modification"
+        }
+      },
+      "required": [
+        "totalStock",
+        "totalServices",
+        "todaySales",
+        "monthSales",
+        "yearSales"
+      ]
+    },
+    "User": {
+      "title": "User",
+      "description": "Authenticated user profile and permissions",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique user UID"
+        },
+        "email": {
+          "type": "string",
+          "description": "The Gmail address of the signed in user"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User's public display name"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Custom or Google-provided avatar picture URL"
+        },
+        "role": {
+          "type": "string",
+          "description": "Either 'admin' or 'customer'"
+        }
+      },
+      "required": [
+        "uid",
+        "email"
+      ]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Catalog of motorcycle spare parts"
+    },
+    "/offers/{offerId}": {
+      "schema": "Offer",
+      "description": "Active promotional discount codes"
+    },
+    "/stats/{statId}": {
+      "schema": "Stat",
+      "description": "Durable dashboard statistics managed manually by admins"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Registered user accounts and active profiles"
+    }
+  }
+}

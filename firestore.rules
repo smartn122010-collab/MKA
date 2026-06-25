@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && (
+        request.auth.token.email_verified == true || 
+        request.auth.token.email == 'smartnp09812@gmail.com' || 
+        request.auth.token.email == 'smartn122010@gmail.com'
+      );
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'smartnp09812@gmail.com' ||
+        request.auth.token.email == 'smartn122010@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Validation blueprints
+    function isValidProduct(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.image is string && data.image.size() <= 2000
+        && data.price is number && data.price >= 0
+        && data.category is string && data.category.size() > 0 && data.category.size() <= 50
+        && data.rating is number && data.rating >= 0 && data.rating <= 5
+        && data.description is string && data.description.size() <= 1000
+        && data.stock is bool;
+    }
+
+    function isValidOffer(data) {
+      return data.code is string && data.code.size() > 0 && data.code.size() <= 50
+        && data.description is string && data.description.size() <= 500
+        && data.discount is string && data.discount.size() <= 50
+        && data.expiry is string && data.expiry.size() <= 50;
+    }
+
+    function isValidStat(data) {
+      return data.totalStock is number && data.totalStock >= 0
+        && data.totalServices is number && data.totalServices >= 0
+        && data.todaySales is number && data.todaySales >= 0
+        && data.monthSales is number && data.monthSales >= 0
+        && data.yearSales is number && data.yearSales >= 0;
+    }
+
+    function isValidUser(data) {
+      return data.uid is string && data.uid == request.auth.uid
+        && data.email is string && data.email.size() > 0
+        && data.displayName is string
+        && data.photoURL is string
+        && (data.role == 'admin' || data.role == 'customer');
+    }
+
+    // Collections
+    match /products/{productId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() && isValidProduct(request.resource.data);
+      allow update: if isAdmin() && isValidProduct(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /offers/{offerId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() && isValidOffer(request.resource.data);
+      allow update: if isAdmin() && isValidOffer(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /stats/{statId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && isValidStat(request.resource.data);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(request.resource.data);
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin()) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
