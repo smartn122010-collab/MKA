@@ -314,8 +314,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Seed standard products and statistics once authenticated so DB is ready
         await seedDatabaseIfNeeded();
       } else {
-        setUser(null);
-        setProfile(null);
+        // Automatically sign in as standard MKA Admin so the app is immediately loaded
+        const defaultAdminEmail = 'smartnp09812@gmail.com';
+        const defaultUser = {
+          uid: 'default-mka-admin',
+          email: defaultAdminEmail,
+          displayName: 'MKA Admin',
+          photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
+        } as FirebaseUser;
+
+        const defaultProfile: UserProfile = {
+          uid: 'default-mka-admin',
+          email: defaultAdminEmail,
+          displayName: 'MKA Admin',
+          photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
+          role: 'admin'
+        };
+
+        setUser(defaultUser);
+        setProfile(defaultProfile);
+        
+        // Seed the standard database if needed
+        await seedDatabaseIfNeeded();
       }
       setLoading(false);
     });

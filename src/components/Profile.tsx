@@ -3,7 +3,6 @@ import { motion } from 'motion/react';
 import { 
   User, 
   Mail, 
-  LogOut, 
   Sparkles, 
   Image as ImageIcon, 
   Check, 
@@ -214,17 +213,6 @@ export const Profile: React.FC = () => {
             </form>
           </motion.div>
         )}
-
-        {/* Profile Action Log Out Button */}
-        <div className="pt-6 border-t border-neutral-900 flex justify-end">
-          <button
-            onClick={logOut}
-            className="flex items-center gap-2 py-3 px-6 bg-red-950/10 hover:bg-red-600 border border-red-500/20 hover:border-red-500 text-xs font-bold text-red-400 hover:text-white rounded-xl transition-all shadow-md"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Securely Sign Out Account</span>
-          </button>
-        </div>
       </div>
     </div>
   );

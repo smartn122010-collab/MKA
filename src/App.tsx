@@ -1,6 +1,5 @@
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
-import { Login } from './components/Login';
 import { Sidebar } from './components/Sidebar';
 import { Home } from './components/Home';
 import { Search } from './components/Search';
@@ -9,7 +8,7 @@ import { RegisterCustomer } from './components/RegisterCustomer';
 import { Offers } from './components/Offers';
 import { Profile } from './components/Profile';
 import { AdminPanel } from './components/AdminPanel';
-import { ShieldAlert, Cog, Sparkles } from 'lucide-react';
+import { ShieldAlert, Cog } from 'lucide-react';
 
 function AppContent() {
   const { user, loading, activeTab, profile } = useApp();
@@ -38,10 +37,8 @@ function AppContent() {
     );
   }
 
-  // 2. Unauthenticated Login Gate
-  if (!user) {
-    return <Login />;
-  }
+  // 2. Unauthenticated Login Gate has been removed to open directly to the Home screen.
+  // We guarantee an active user profile at the context layer.
 
   // 3. Render Active Page depending on Sidebar routing state
   const renderActiveScreen = () => {
