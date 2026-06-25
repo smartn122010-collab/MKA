@@ -117,11 +117,12 @@ export const AdminPanel: React.FC = () => {
   const [editingStat, setEditingStat] = useState<{ key: keyof SalesStats; label: string; value: number } | null>(null);
   const [statEditValue, setStatEditValue] = useState<string>('');
 
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [confirmingResetPin, setConfirmingResetPin] = useState(false);
 
-  const showFeedback = (msg: string) => {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(null), 3000);
+  const showFeedback = (msg: string, type: 'success' | 'error' = 'success') => {
+    setFeedback({ message: msg, type });
+    setTimeout(() => setFeedback(null), 3500);
   };
 
   // Security PIN core handlers
@@ -171,11 +172,11 @@ export const AdminPanel: React.FC = () => {
   const handleUpdatePin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPinVal.length < 4) {
-      alert("New PIN must be at least 4 characters.");
+      showFeedback("New PIN must be at least 4 characters.", "error");
       return;
     }
     if (newPinVal !== confirmNewPinVal) {
-      alert("The confirm PIN does not match the new PIN.");
+      showFeedback("The confirm PIN does not match the new PIN.", "error");
       return;
     }
     try {
@@ -192,12 +193,15 @@ export const AdminPanel: React.FC = () => {
       setConfirmNewPinVal('');
     } catch (err) {
       console.error("Error updating PIN:", err);
-      alert("Failed to update PIN in the database.");
+      showFeedback("Failed to update PIN in the database.", "error");
     }
   };
 
   const handleResetPin = async () => {
-    if (!confirm("Are you sure you want to RESET the admin security PIN? This will wipe the current PIN, locking the admin panel and returning it to a first-time set up state.")) {
+    if (!confirmingResetPin) {
+      setConfirmingResetPin(true);
+      showFeedback("Click Reset PIN again to confirm. This will wipe the PIN and lock the panel.", "error");
+      setTimeout(() => setConfirmingResetPin(false), 5000);
       return;
     }
     try {
@@ -211,9 +215,10 @@ export const AdminPanel: React.FC = () => {
       }
       setIsUnlocked(false);
       showFeedback("Security PIN cleared successfully. Reset to setup mode.");
+      setConfirmingResetPin(false);
     } catch (err) {
       console.error("Error resetting PIN:", err);
-      alert("Failed to reset PIN. Check database connectivity.");
+      showFeedback("Failed to reset PIN. Check database connectivity.", "error");
     }
   };
 
@@ -221,7 +226,7 @@ export const AdminPanel: React.FC = () => {
   const handleAddProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProduct.name || !newProduct.image || newProduct.price <= 0 || !newProduct.description) {
-      alert("Please fill out all product details correctly.");
+      showFeedback("Please fill out all product details correctly.", "error");
       return;
     }
     
@@ -257,7 +262,7 @@ export const AdminPanel: React.FC = () => {
   const handleAddOfferSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newOffer.code || !newOffer.description || !newOffer.discount || !newOffer.expiry) {
-      alert("Please fill out all offer details correctly.");
+      showFeedback("Please fill out all offer details correctly.", "error");
       return;
     }
     await addNewOffer(newOffer);
@@ -275,7 +280,7 @@ export const AdminPanel: React.FC = () => {
     if (!editingStat) return;
     const numValue = Number(statEditValue);
     if (isNaN(numValue) || numValue < 0) {
-      alert("Please enter a valid positive number.");
+      showFeedback("Please enter a valid positive number.", "error");
       return;
     }
 
@@ -574,10 +579,18 @@ export const AdminPanel: React.FC = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="p-4 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl text-emerald-400 text-xs font-semibold flex items-center gap-2.5 shadow-lg"
+            className={`p-4 border rounded-2xl text-xs font-semibold flex items-center gap-2.5 shadow-lg ${
+              feedback.type === 'error'
+                ? 'bg-red-500/10 border-red-500/25 text-red-400'
+                : 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+            }`}
           >
-            <CheckCircle className="w-4 h-4" />
-            <span>{feedback}</span>
+            {feedback.type === 'error' ? (
+              <ShieldAlert className="w-4 h-4 text-red-400" />
+            ) : (
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+            )}
+            <span>{feedback.message}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -996,12 +1009,13 @@ export const AdminPanel: React.FC = () => {
                       {/* Delete */}
                       <button
                         onClick={() => {
-                          if (product.id && confirm(`Are you sure you want to delete ${product.name}?`)) {
+                          if (product.id) {
                             removeProduct(product.id);
-                            showFeedback("Part deleted from Catalog successfully.");
+                            showFeedback(`"${product.name}" deleted from Catalog successfully.`);
                           }
                         }}
                         className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-950/15 rounded-lg transition-all"
+                        title="Delete Product"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1112,12 +1126,13 @@ export const AdminPanel: React.FC = () => {
 
                   <button
                     onClick={() => {
-                      if (offer.id && confirm(`Delete coupon ${offer.code}?`)) {
+                      if (offer.id) {
                         removeOffer(offer.id);
-                        showFeedback("Promo Code deleted successfully.");
+                        showFeedback(`Promo Code "${offer.code}" deleted successfully.`);
                       }
                     }}
                     className="p-2 text-neutral-500 hover:text-red-500 hover:bg-red-950/15 rounded-lg transition-all"
+                    title="Delete Promo Code"
                   >
                     <Trash2 className="w-4.5 h-4.5" />
                   </button>
@@ -1226,10 +1241,14 @@ export const AdminPanel: React.FC = () => {
             <button
               type="button"
               onClick={handleResetPin}
-              className="w-full py-3 border border-red-500/20 hover:bg-red-950/10 text-red-500 font-bold rounded-xl transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2"
+              className={`w-full py-3 border font-bold rounded-xl transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 ${
+                confirmingResetPin 
+                  ? 'border-red-500 bg-red-950/20 text-red-400 animate-pulse' 
+                  : 'border-red-500/20 hover:bg-red-950/10 text-red-500'
+              }`}
             >
-              <RefreshCw className="w-4 h-4" />
-              <span>Reset PIN Option</span>
+              <RefreshCw className={`w-4 h-4 ${confirmingResetPin ? 'animate-spin' : ''}`} />
+              <span>{confirmingResetPin ? 'Click Again to Confirm Reset' : 'Reset PIN Option'}</span>
             </button>
           </div>
 
